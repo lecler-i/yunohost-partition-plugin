@@ -347,27 +347,33 @@ primary partition with an extended partition first.""")
         return region
 
     def _format_partition(self, p):
+        size_kib = int(parted.formatBytes(p.geometry.length * self.device.sectorSize, 'KiB'));
         return {
             'path': p.path,
             'boot': p.getFlag(parted.PARTITION_BOOT),
             'raid': p.getFlag(parted.PARTITION_RAID),
             'start': p.geometry.start,
             'end': p.geometry.end,
-            'blocks': int(parted.formatBytes(p.geometry.length * self.device.sectorSize, 'KiB')),
+            'blocks': size_kib,
             'id': p.number,
             'system': self._guess_system(p),
+            'system_type': p.fileSystem.type if p.fileSystem else None,
+            'size': humanize_sizeof(p.geometry.length * self.device.sectorSize),
             #'system_raw': p.fileSystem
         }
 
+def humanize_sizeof(num, suffix='B'):
+    for unit in ['','Ki','Mi','Gi','Ti','Pi','Ei','Zi']:
+        if abs(num) < 1024.0:
+            return "%3.1f %s%s" % (num, unit, suffix)
+        num /= 1024.0
+    return "%.1f %s%s" % (num, 'Yi', suffix)
 
-def part_list_devices(auth = None):
+def part_list_all(auth = None):
     try:
         context = pyudev.Context()
         devices = [device.device_node for device in context.list_devices(DEVTYPE='disk') if device['MAJOR'] == '8' or device['MAJOR'] == '3']
         return {'devices': [part_list(dev, auth) for dev in devices]}
-            # major = device['MAJOR']
-            # if major == '8' or major == '3':
-            #     print "{}".format(device.device_node)
     except Exception as e:
         raise MoulinetteError(errno.EIO, e.message)
 
@@ -396,7 +402,6 @@ def part_raid(devpath, index, auth = None):
     except Exception as e:
         raise MoulinetteError(errno.EIO, e.message)
 
-
 def part_create(devpath, type, start, size, auth = None):
     try:
         fdisk = Fdisk(devpath=devpath)
@@ -424,7 +429,6 @@ def part_type(devpath, index, type, auth = None):
     except Exception as e:
         raise MoulinetteError(errno.EIO, e.message)
 
-
 def part_fresh_disk(devpath, auth = None):
     try:
         fdisk = Fdisk(devpath=devpath)
@@ -433,6 +437,3 @@ def part_fresh_disk(devpath, auth = None):
         return ret
     except Exception as e:
         raise MoulinetteError(errno.EIO, e.message)
-
-
-print(parted);

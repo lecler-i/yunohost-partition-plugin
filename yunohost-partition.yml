@@ -65,7 +65,7 @@ part:
     actions:
         list:
             action_help: List partitions on a device 
-            api: GET /part/<devpath>
+            api: GET /part/list/<devpath>
             arguments:
                 devpath:
                     help: Path of the device
@@ -73,9 +73,9 @@ part:
                 authenticate: all
                 authenticator: ldap-anonymous
 
-        list-devices:
+        list-all:
             action_help: List available devices 
-            api: GET /part/
+            api: GET /part/list-all
             configuration:
                 authenticate: all
                 authenticator: ldap-anonymous
@@ -83,7 +83,7 @@ part:
 
         boot:
             action_help: Set Boot flag on a partition 
-            api: POST /part/<devpath>/<index>/boot
+            api: POST /part/toggle-boot/<devpath>/<index>
             arguments:
                 devpath:
                     help: Path of the device
@@ -99,7 +99,7 @@ part:
 
         raid:
             action_help: Set Raid flag on a partition 
-            api: POST /part/<devpath>/<index>/raid
+            api: POST /part/toggle-raid/<devpath>/<index>
             arguments:
                 devpath:
                     help: Path of the device
@@ -113,7 +113,7 @@ part:
 
         create:
             action_help: Create a new partition 
-            api: POST /part/<devpath>
+            api: POST /part/create/<devpath>
             arguments:
                 devpath:
                     help: Path of the device
@@ -132,7 +132,7 @@ part:
 
         type:
             action_help: Change partition type 
-            api: POST /part/<devpath>/<index>/<type>
+            api: POST /part/type/<devpath>/<index>/<type>
             arguments:
                 devpath:
                     help: Path of the device
@@ -152,14 +152,14 @@ part:
 
         fresh-disk:
             action_help: Create a new empty partition table 
-            api: POST /part/<devpath>/reset
+            api: POST /part/reset/<devpath>
             arguments:
                 devpath:
                     help: Path of the device
 
         delete:
             action_help: Delete a partition 
-            api: DEL /part/<devpath>/<index>
+            api: DEL /part/delete/<devpath>/<index>
             arguments:
                 devpath:
                     help: Path of the device
