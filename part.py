@@ -32,6 +32,8 @@ import errno
 import requests
 import subprocess
 import parted
+import pyudev
+
 
 from moulinette.core import MoulinetteError
 from moulinette.utils.log import getActionLogger
@@ -58,6 +60,7 @@ class Fdisk(object):
                 raise RuntimeError('Only MBR partitions are supported')
         except parted.DiskException:
             self.create_empty()
+
 
     def toggle_bootable(self, index):
         """toggle a bootable flag"""
@@ -353,9 +356,20 @@ primary partition with an extended partition first.""")
             'blocks': int(parted.formatBytes(p.geometry.length * self.device.sectorSize, 'KiB')),
             'id': p.number,
             'system': self._guess_system(p),
-            'system_raw': p.fileSystem
+            #'system_raw': p.fileSystem
         }
 
+
+def part_list_devices(auth = None):
+    try:
+        context = pyudev.Context()
+        devices = [device.device_node for device in context.list_devices(DEVTYPE='disk') if device['MAJOR'] == '8' or device['MAJOR'] == '3']
+        return {'devices': [part_list(dev, auth) for dev in devices]}
+            # major = device['MAJOR']
+            # if major == '8' or major == '3':
+            #     print "{}".format(device.device_node)
+    except Exception as e:
+        raise MoulinetteError(errno.EIO, e.message)
 
 def part_list(devpath = None, auth = None):
     try:
@@ -421,3 +435,4 @@ def part_fresh_disk(devpath, auth = None):
         raise MoulinetteError(errno.EIO, e.message)
 
 
+print(parted);

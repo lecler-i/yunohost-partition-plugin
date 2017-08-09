@@ -73,6 +73,14 @@ part:
                 authenticate: all
                 authenticator: ldap-anonymous
 
+        list-devices:
+            action_help: List available devices 
+            api: GET /part/
+            configuration:
+                authenticate: all
+                authenticator: ldap-anonymous
+
+
         boot:
             action_help: Set Boot flag on a partition 
             api: POST /part/<devpath>/<index>/boot
