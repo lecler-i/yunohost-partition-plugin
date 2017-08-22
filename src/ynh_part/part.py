@@ -19,7 +19,7 @@
 
 """
 
-""" yunohost_toto.py
+""" yunohost_part.py
 
     IM DOING STUFFS
 """
@@ -33,15 +33,57 @@ import requests
 import subprocess
 import parted
 import pyudev
-
+import pexpect
+import sys
 
 from moulinette.core import MoulinetteError
 from moulinette.utils.log import getActionLogger
 
 from yunohost.domain import get_public_ip, _get_maindomain
 
-logger = getActionLogger('yunohost.toto')
+logger = getActionLogger('yunohost.part')
 
+class Mdadm(object):
+    def __init__(self):
+        pass
+
+    def create(self, device, level, devices_list, name = None, chunk = None, force = False):
+        errors = []
+        can_continue = False
+
+        args = ['--create', device]
+        if chunk:
+            args += ['-c', chunk]
+        if name:
+            args += ['-N', name]
+
+        args += ['-l', level, '-n', str(len(devices_list))]
+        args += devices_list
+        self.child = pexpect.spawn('mdadm', args)
+        #self.child.logfile = sys.stdout
+        try:
+            errors = self._parse_errors([])
+            if self.child.after.strip() == 'Continue creating array?':
+                can_continue = True
+                if force:
+                    self.child.sendline('Y')
+                    self.child.expect('Y\r\n')
+                    result = self._parse_errors([])
+                    ret = self.child.wait()
+                    return { 'warnings': errors, 'result': result, 'success': True if ret == 0 else False }
+        except(pexpect.EOF):
+            pass
+
+        return { 'errors': errors, 'can_continue': can_continue }
+
+    def _parse_errors(self, errors):
+        if self.child.expect(['^mdadm:[^\r]+\r\n', pexpect.EOF, 'Continue creating array\? ']) == 0:
+            error = self.child.after.strip()
+            if self.child.expect(['\s+[^\r]+\r\n', pexpect.EOF]) == 0:
+                error += ' - ' + self.child.after.strip()
+            errors.append(error)
+            return self._parse_errors(errors)
+        return errors
 
 class Fdisk(object):
     """Main program class"""
@@ -68,10 +110,8 @@ class Fdisk(object):
             raise RuntimeError('No partition is defined yet!')
 
         for p in self.disk.partitions:
-            # handle partitions not in disk order
-            print('Current :', p.number)
             if p.number == index:
-                print('Found it !')
+                #print('Found it !')
                 if not p.getFlag(parted.PARTITION_BOOT):
                     p.setFlag(parted.PARTITION_BOOT)
                 else:
@@ -85,10 +125,7 @@ class Fdisk(object):
             raise RuntimeError('No partition is defined yet!')
 
         for p in self.disk.partitions:
-            # handle partitions not in disk order
-            print('Current :', p.number)
             if p.number == index:
-                print('Found it !')
                 if not p.getFlag(parted.PARTITION_RAID):
                     p.setFlag(parted.PARTITION_RAID)
                 else:
@@ -99,21 +136,13 @@ class Fdisk(object):
     def delete_partition(self, index):
         """delete a partition"""
         if not self.disk.partitions:
-            print 'No partition is defined yet!'
-
+            raise RuntimeError('No partition is defined yet!')
         number = int(index)#self._ask_partition()
         for p in self.disk.partitions:
-            # handle partitions not in disk order
             if p.number == number:
                 self.disk.deletePartition(p)
                 return True
         raise RuntimeError('No partition with index ' + index)
-                
-    def print_menu(self):
-        """print this menu"""
-        print "Command action"
-        for (command, fun) in self.commands.iteritems():
-            print '{0:^7}{1}'.format(command, fun.__doc__)
 
     def add_partition(self, type, part_start, part_end):
         """add a new partition"""
@@ -143,22 +172,18 @@ class Fdisk(object):
             raise RuntimeError("""If you want to create more than four partitions, you must replace a
 primary partition with an extended partition first.""")
 
-        print "Partition type:"
         if parts_avail:
             default = 'p'
             options.add('p')
-            print '   p   primary ({primary:d} primary, {extended:d} extended, {free:d} free)'.format(**data)
             if not ext_count:
                 # If we have only one spare partition, suggest extended
                 if pri_count >= 3:
                     default = 'e'
                 options.add('e')
-                print '   e   extended'
         if ext_count:
             # XXX: We do not observe disk.getMaxLogicalPartitions() constraint
             default = default or 'l'
             options.add('l')
-            print '   l   logical (numbered from {first_logical:d})'.format(**data)
 
         # fdisk doesn't display a menu if it has only one option, but we do
         choice = type#raw_input('Select (default {default:s}): '.format(default=default))
@@ -216,7 +241,7 @@ primary partition with an extended partition first.""")
         data = {
             'path': device.path,
             'size': size,
-            'size_mbytes': int(parted.formatBytes(size, 'MB')),
+            'size_human': humanize_sizeof(size),
             'heads': heads,
             'sectors': sectors,
             'cylinders': cylinders,
@@ -287,7 +312,7 @@ primary partition with an extended partition first.""")
 
         try:
             geometry = parted.Geometry(device=self.device, start=part_start, end=part_end)
-            # fs = parted.FileSystem(type=fs_type, geometry=geometry)
+            #fs = parted.FileSystem(type='ntfs', geometry=geometry)
 
             partition = parted.Partition(
                 disk=self.disk,
@@ -369,7 +394,11 @@ def humanize_sizeof(num, suffix='B'):
         num /= 1024.0
     return "%.1f %s%s" % (num, 'Yi', suffix)
 
-def part_list_all(auth = None):
+###
+### Yunhost functions ###
+###
+
+def ynh_part_list_all(auth = None):
     try:
         context = pyudev.Context()
         devices = [device.device_node for device in context.list_devices(DEVTYPE='disk') if device['MAJOR'] == '8' or device['MAJOR'] == '3']
@@ -384,7 +413,7 @@ def part_list(devpath = None, auth = None):
     except Exception as e:
         raise MoulinetteError(errno.EIO, e.message)
 
-def part_boot(devpath, index, auth = None):
+def part_toggle_boot(devpath, index, auth = None):
     try:
         fdisk = Fdisk(devpath=devpath)
         ret = fdisk.toggle_bootable(int(index))
@@ -393,7 +422,7 @@ def part_boot(devpath, index, auth = None):
     except Exception as e:
         raise MoulinetteError(errno.EIO, e.message)
 
-def part_raid(devpath, index, auth = None):
+def part_toggle_raid(devpath, index, auth = None):
     try:
         fdisk = Fdisk(devpath=devpath)
         ret = fdisk.toggle_raid(int(index))
@@ -434,6 +463,15 @@ def part_fresh_disk(devpath, auth = None):
         fdisk = Fdisk(devpath=devpath)
         ret = fdisk.create_empty()
         fdisk.write()
+        return ret
+    except Exception as e:
+        raise MoulinetteError(errno.EIO, e.message)
+
+
+def part_raid_create(device, level, devices, force=False, auth = None):
+    try:
+        mdadm = Mdadm()
+        ret = mdadm.create(device=device, level=level, devices_list=devices, force=force)
         return ret
     except Exception as e:
         raise MoulinetteError(errno.EIO, e.message)
