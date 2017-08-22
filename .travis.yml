@@ -6,6 +6,8 @@ script:
 
 before_deploy:
   - wget -O- http://travis.debian.net/script.sh | sh -
+  - ls /tmp/buildd
+  - ls ../
 
 deploy:
   provider: releases
