@@ -4,9 +4,6 @@ services:
 script:
   - wget -O- http://travis.debian.net/script.sh | sh -
 
-before_deploy:
-  - cp release/*.deb release/`basename $TRAVIS_REPO_SLUG`.deb
-
 deploy:
   provider: releases
   file_glob: true
