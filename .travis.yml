@@ -6,6 +6,15 @@ services:
 
 script:
   - wget -O- http://travis.debian.net/script.sh | sh -
+  - ls
+
+deploy:
+  provider: releases
+  api_key: "GITHUB OAUTH TOKEN"
+  file: "FILE TO UPLOAD"
+  skip_cleanup: true
+  on:
+    tags: true
 
 branches:
   except:
