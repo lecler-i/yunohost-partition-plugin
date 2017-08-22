@@ -2,9 +2,6 @@ services:
   - docker
 
 script:
-  - echo "Nothing to do !"
-
-before_deploy:
   - wget -O- http://travis.debian.net/script.sh | sh -
 
 deploy:
