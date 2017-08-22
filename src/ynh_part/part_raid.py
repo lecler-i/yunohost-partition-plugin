@@ -1,3 +1,4 @@
+import sys
 import pexpect
 import errno
 
@@ -21,10 +22,11 @@ class Mdadm(object):
         args += ['-l', level, '-n', str(len(devices_list))]
         args += devices_list
         self.child = pexpect.spawn('mdadm', args)
-        #self.child.logfile = sys.stdout
+        self.child.logfile = sys.stdout
+
         try:
             errors = self._parse_errors([])
-            if self.child.after.strip() == 'Continue creating array?':
+            if self.child.after is not pexpect.EOF and self.child.after.strip() == 'Continue creating array?':
                 can_continue = True
                 if force:
                     self.child.sendline('Y')
