@@ -1,26 +1,19 @@
+yunohost-partition-plugin (0.1.2) UNRELEASED; urgency=medium
+
+  * Fix control debian file
+  * Split raid and part into two files
+  * Fix error on raid create
+  * Bump to 0.1.2
+
+ -- Thomas LECLERCQ <contact@thomas.sh>  Tue, 22 Aug 2017 19:57:49 +0200
+
 yunohost-partition-plugin (0.1.1) UNRELEASED; urgency=medium
 
-  [ Thomas LECLERCQ ]
   * Fix travis deploy
-  * fix travis deploy... again
-  * fix travis build... again
-  * Get correct release
   * Update debian package deps
   * Bump to version 0.1.1
 
-  [ root ]
-
-  [ Thomas LECLERCQ ]
-  * Fix travis deploy
-  * fix travis deploy... again
-  * fix travis build... again
-  * Get correct release
-  * Update debian package deps
-  * Bump to version 0.1.1
-
-  [ root ]
-
- -- Thomas LECLERCQ <contact@thomas.sh>  Tue, 22 Aug 2017 18:34:46 +0200
+ -- Thomas LECLERCQ <contact@thomas.sh>  Tue, 22 Aug 2017 19:30:49 +0200
 
 yunohost-partition-plugin (0.1.0) unstable; urgency=medium
 
