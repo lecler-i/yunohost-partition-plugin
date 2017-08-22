@@ -3,27 +3,13 @@ Section: utils
 Priority: extra
 Build-Depends: debhelper (>= 8.0.0)
 Maintainer: Thomas LECLERCQ <contact@thomas.sh>
-Standards-Version: 0.1.0
+Standards-Version: 0.1.1
 X-Python-Version: >= 2.7
 Homepage: https://github.com/lecler-i/yunohost-partition-plugin
-
 Package: yunohost-partition-plugin
 Architecture: all
 Depends: ${python:Depends}, ${misc:Depends}
- , moulinette (>= 2.3.5.1)
- , python-psutil, python-requests, python-dnspython, python-openssl
- , python-apt, python-miniupnpc
- , glances
- , dnsutils, bind9utils, unzip, git, curl, cron
- , ca-certificates, netcat-openbsd, iproute
- , mariadb-server | mysql-server, php5-mysql | php5-mysqlnd
- , slapd, ldap-utils, sudo-ldap, libnss-ldapd, nscd
- , postfix-ldap, postfix-policyd-spf-perl, postfix-pcre, procmail
- , dovecot-ldap, dovecot-lmtpd, dovecot-managesieved
- , dovecot-antispam, fail2ban
- , nginx-extras (>=1.6.2), php5-fpm, php5-ldap, php5-intl
- , dnsmasq, openssl, avahi-daemon, libnss-mdns, resolvconf, libnss-myhostname
- , ssowat, metronome
- , rspamd (>= 1.2.0), rmilter (>=1.7.0), redis-server, opendkim-tools
- , haveged
+ , yunohost
+ , python-pexpect, python-pyudev, python-parted
+ , mdadm
 Description: A plugin to add partitioning and disk management to Yunohost
