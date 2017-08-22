@@ -1,3 +1,27 @@
+yunohost-partition-plugin (0.1.1) UNRELEASED; urgency=medium
+
+  [ Thomas LECLERCQ ]
+  * Fix travis deploy
+  * fix travis deploy... again
+  * fix travis build... again
+  * Get correct release
+  * Update debian package deps
+  * Bump to version 0.1.1
+
+  [ root ]
+
+  [ Thomas LECLERCQ ]
+  * Fix travis deploy
+  * fix travis deploy... again
+  * fix travis build... again
+  * Get correct release
+  * Update debian package deps
+  * Bump to version 0.1.1
+
+  [ root ]
+
+ -- Thomas LECLERCQ <contact@thomas.sh>  Tue, 22 Aug 2017 18:34:46 +0200
+
 yunohost-partition-plugin (0.1.0) unstable; urgency=medium
 
   * Initial release.
