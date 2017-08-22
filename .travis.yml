@@ -1,21 +1,13 @@
 sudo: required
 language: generic
-
 services:
   - docker
-
 script:
   - wget -O- http://travis.debian.net/script.sh | sh -
-  - ls
-
 deploy:
   provider: releases
-  api_key: "GITHUB OAUTH TOKEN"
-  file: "FILE TO UPLOAD"
-  skip_cleanup: true
+  api_key:
+    secure: ZkPnzYvvJ265cjP3SC08AZm6ScRsOcj+cIuIZvLNWUvmdROc8Y48HtSOEHhPkvnq2E6XVuLJs5rOl5bwOOTj9WeLlvNkoS813TkHfh5IPcyyffjV6XKbYp2NvjbmkKyDhbRmeM8aDbbIp4WPvRNDfFgNfWjZ7gFh1cKWIrzxLY5v/OTQnduWkdf1N/90ZQuQ2/cd/3jBrhzvnBsR94L0jjrUFzKqScDxPTMnKAeMPM7TfMTRfuMIwpr3igynGYo2w8n0JYdCWTDciTSzdAmKTaApwkfgYEfkQIaTv7vLEW5QkuveuucEz08IB6+iXQ2SmxXEWD2tlXCAt6hG5VhzNQ0DDTgxoRWj69YcaIUH5c2BzEjAICJhQCzooaHdPoI1192t3VLPTpJnNz+OWUTpmtsIBH/jWvXLfJfmCS/JeYvUVGNTNIxVPNg2ulWOlF/P2FdipeAvyBcoWY2CRau1xAJLxWC3KIwzFywQm+oLgtKzbqqa4wgrL+EcVP++nQATDq1HhkUfkgM8CwzaJbn6WitM8Fl1Ctcp6LqFqU4/vvCyD/8vUOdRS5hYocUtrLsFdYjkwUWTjA9zjJs+eW5Vn24gJei5g9CD+30TsXEWsq6Ov6u7nbCWUKUZQ1MRmOQxA/jbJR44U9Q7fG/o6xK75GZbKtWrmoIUuLzwfhkB1QA=
+  file: "/tmp/buildd/*"
   on:
-    tags: true
-
-branches:
-  except:
-    - /^debian\/\d/
+    repo: lecler-i/yunohost-partition-plugin
