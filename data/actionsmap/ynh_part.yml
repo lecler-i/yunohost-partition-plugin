@@ -153,3 +153,35 @@ part:
             configuration:
                 authenticate: all
                 authenticator: ldap-anonymous
+
+#######################
+#   Disk Part Raid    #
+#######################
+part_raid:
+    category_help: Manage raid partitions
+    actions:
+
+        create:
+            action_help: List available devices
+            api: POST /part-raid/create
+            arguments:
+                device:
+                    help: Name of the newly created device
+                level:
+                    help: Level of the raid system
+                devices:
+                    help: List of devices
+                    nargs: "*"
+                --force:
+                    help: Confirm raid creation
+                    action: store_true
+
+                    # extra:
+                    #     pattern: &pattern_index
+                    #         - !!str ^(\d+)$
+                    #         - "pattern_index"
+
+            configuration:
+                authenticate: all
+                authenticator: ldap-anonymous
+

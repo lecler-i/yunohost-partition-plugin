@@ -3,9 +3,10 @@ Section: utils
 Priority: extra
 Build-Depends: debhelper (>= 8.0.0)
 Maintainer: Thomas LECLERCQ <contact@thomas.sh>
-Standards-Version: 0.1.1
+Standards-Version: 0.1.2
 X-Python-Version: >= 2.7
 Homepage: https://github.com/lecler-i/yunohost-partition-plugin
+
 Package: yunohost-partition-plugin
 Architecture: all
 Depends: ${python:Depends}, ${misc:Depends}
