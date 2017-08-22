@@ -1,2 +1,2 @@
-data/actionsmap/* /usr/share/moulinette/actionsmap/
+data/actionsmap/ynh_part.yml /usr/share/moulinette/actionsmap/
 src/ynh_part /usr/lib/moulinette/

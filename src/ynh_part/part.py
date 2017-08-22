@@ -39,8 +39,6 @@ import sys
 from moulinette.core import MoulinetteError
 from moulinette.utils.log import getActionLogger
 
-from yunohost.domain import get_public_ip, _get_maindomain
-
 logger = getActionLogger('yunohost.part')
 
 class Mdadm(object):
