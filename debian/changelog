@@ -1,4 +1,13 @@
-yunohost-partition-plugin (0.1.2) UNRELEASED; urgency=medium
+yunohost-partition-plugin (0.1.3) unstable; urgency=medium
+
+  [ Thomas LECLERCQ ]
+  * Add format function
+
+  [ root ]
+
+ -- Thomas LECLERCQ <contact@thomas.sh>  Wed, 23 Aug 2017 14:05:49 +0200
+
+yunohost-partition-plugin (0.1.2) unstable; urgency=medium
 
   * Fix control debian file
   * Split raid and part into two files
@@ -7,7 +16,7 @@ yunohost-partition-plugin (0.1.2) UNRELEASED; urgency=medium
 
  -- Thomas LECLERCQ <contact@thomas.sh>  Tue, 22 Aug 2017 19:57:49 +0200
 
-yunohost-partition-plugin (0.1.1) UNRELEASED; urgency=medium
+yunohost-partition-plugin (0.1.1) unstable; urgency=medium
 
   * Fix travis deploy
   * Update debian package deps

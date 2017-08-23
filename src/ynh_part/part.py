@@ -29,11 +29,13 @@ import subprocess
 import parted
 import pyudev
 import sys
+import _ped
 
 from moulinette.core import MoulinetteError
 from moulinette.utils.log import getActionLogger
 
 logger = getActionLogger('yunohost.part')
+
 
 class Fdisk(object):
     """Main program class"""
@@ -52,7 +54,6 @@ class Fdisk(object):
                 raise RuntimeError('Only MBR partitions are supported')
         except parted.DiskException:
             self.create_empty()
-
 
     def toggle_bootable(self, index):
         """toggle a bootable flag"""
@@ -83,18 +84,34 @@ class Fdisk(object):
                 return True
         raise RuntimeError('No partition with index ' + index)
 
+    def format_partition(self, index, type):
+        if not self.disk.partitions:
+            raise RuntimeError('No partition is defined yet!')
+
+        for p in self.disk.partitions:
+            if p.number == index:
+                geometry = p.geometry
+                self.disk.deletePartition(p)
+                self.write()
+                return self.add_partition(p.type, geometry.start, "+{}".format(geometry.length), type)
+                #self.disk.addPartition(partition=partition, constraint=self.device.getConstraint())
+                return True
+
+        raise RuntimeError("No partition with index % found".format(index))
+        return False
+
     def delete_partition(self, index):
         """delete a partition"""
         if not self.disk.partitions:
             raise RuntimeError('No partition is defined yet!')
-        number = int(index)#self._ask_partition()
+        number = int(index)  # self._ask_partition()
         for p in self.disk.partitions:
             if p.number == number:
                 self.disk.deletePartition(p)
                 return True
         raise RuntimeError('No partition with index ' + index)
 
-    def add_partition(self, type, part_start, part_end):
+    def add_partition(self, type, part_start, part_end, format_type):
         """add a new partition"""
         # Primary partitions count
         pri_count = len(self.disk.getPrimaryPartitions())
@@ -103,7 +120,8 @@ class Fdisk(object):
         # First logical partition number
         lpart_start = self.disk.maxPrimaryPartitionCount + 1
         # Number of spare partitions slots
-        parts_avail = self.disk.maxPrimaryPartitionCount - (pri_count + ext_count)
+        parts_avail = self.disk.maxPrimaryPartitionCount - \
+            (pri_count + ext_count)
 
         data = {
             'primary': pri_count,
@@ -136,12 +154,14 @@ primary partition with an extended partition first.""")
             options.add('l')
 
         # fdisk doesn't display a menu if it has only one option, but we do
-        choice = type#raw_input('Select (default {default:s}): '.format(default=default))
+        # raw_input('Select (default {default:s}): '.format(default=default))
+        choice = type
         if not choice:
             choice = default
 
         if not choice[0] in options:
-            raise RuntimeError("Invalid partition type `{choice}'".format(choice=choice))
+            raise RuntimeError(
+                "Invalid partition type `{choice}'".format(choice=choice))
 
         try:
             partition = None
@@ -158,10 +178,12 @@ primary partition with an extended partition first.""")
                         # All ok
                         pass
 
-                p = self._create_partition(geometry, part_start, part_end, type=parted.PARTITION_NORMAL)
+                p = self._create_partition(
+                    geometry, part_start, part_end, format_type, type=parted.PARTITION_NORMAL)
             elif choice[0] == 'e':
                 # Create extended partition in the largest free region
-                p = self._create_partition(geometry, part_start, part_end, type=parted.PARTITION_EXTENDED)
+                p = self._create_partition(
+                    geometry, part_start, part_end, format_type, type=parted.PARTITION_EXTENDED)
             elif choice[0] == 'l':
                 # Largest free region must be (at least partially) inside the
                 # extended partition.
@@ -171,7 +193,8 @@ primary partition with an extended partition first.""")
                     print "No free sectors available"
                     return
 
-                p = self._create_partition(geometry, part_start, part_end, type=parted.PARTITION_LOGICAL)
+                p = self._create_partition(
+                    geometry, part_start, part_end, format_type, type=parted.PARTITION_LOGICAL)
 
             if p:
                 return self._format_partition(p)
@@ -203,13 +226,12 @@ primary partition with an extended partition first.""")
             'minimum_io_size': device.minimumAlignment.grainSize * device.sectorSize,
             'optimal_io_size': device.optimumAlignment.grainSize * device.sectorSize,
         }
-        results = { 'device': data, 'partitions': {} }
+        results = {'device': data, 'partitions': {}}
 
         for p in disk.partitions:
             results['partitions'][p.number] = self._format_partition(p)
 
         return results
-
 
     def write(self):
         """write table to disk and exit"""
@@ -234,41 +256,44 @@ primary partition with an extended partition first.""")
                 return sector
             elif unit in known_units.keys():
                 # +size{K,M,G}
-                sector = start + parted.sizeToSectors(num, known_units[unit], sector_size)
+                sector = start + \
+                    parted.sizeToSectors(num, known_units[unit], sector_size)
                 return sector
         else:
             # must be an integer (sector); if not, raise ValueError
             sector = int(value)
             return sector
 
-    def _create_partition(self, region, start, end, type=parted.PARTITION_NORMAL):
+    def _create_partition(self, region, start, end, format_type, type=parted.PARTITION_NORMAL):
         """Creates the partition with geometry specified"""
         # libparted doesn't let setting partition number, so we skip it, too
 
         # We want our new partition to be optimally aligned
         # (you can use minimalAlignedConstraint, if you wish).
         alignment = self.device.optimalAlignedConstraint
-        constraint = parted.Constraint(maxGeom=region).intersect(alignment)
+        constraint = self.device.getConstraint().intersect(alignment)  # parted.Constraint(maxGeom=region).intersect(alignment)
         data = {
             'start': constraint.startAlign.alignUp(region, region.start),
             'end': constraint.endAlign.alignDown(region, region.end),
         }
 
         part_start = int(start)
-        #check sur data['start']
+        # check sur data['start']
 
-        part_end = self._parse_last_sector_expr(part_start, end, self.device.sectorSize)#self._ask_value(
-        #check sur data['end']
+        part_end = self._parse_last_sector_expr(
+            part_start, end, self.device.sectorSize)  # self._ask_value(
+        # check sur data['end']
 
         try:
-            geometry = parted.Geometry(device=self.device, start=part_start, end=part_end)
-            #fs = parted.FileSystem(type='ntfs', geometry=geometry)
+            geometry = parted.Geometry(
+                device=self.device, start=part_start, end=part_end)
+            fs = parted.FileSystem(type=format_type, geometry=geometry)
 
             partition = parted.Partition(
                 disk=self.disk,
                 type=type,
                 geometry=geometry,
-                fs=None
+                fs=fs
             )
             self.disk.addPartition(partition=partition, constraint=constraint)
         except (parted.PartitionException, parted.GeometryException, parted.CreateException) as e:
@@ -322,7 +347,8 @@ primary partition with an extended partition first.""")
         return region
 
     def _format_partition(self, p):
-        size_kib = int(parted.formatBytes(p.geometry.length * self.device.sectorSize, 'KiB'));
+        size_kib = int(parted.formatBytes(
+            p.geometry.length * self.device.sectorSize, 'KiB'))
         return {
             'path': p.path,
             'boot': p.getFlag(parted.PARTITION_BOOT),
@@ -337,8 +363,9 @@ primary partition with an extended partition first.""")
             #'system_raw': p.fileSystem
         }
 
+
 def humanize_sizeof(num, suffix='B'):
-    for unit in ['','Ki','Mi','Gi','Ti','Pi','Ei','Zi']:
+    for unit in ['', 'Ki', 'Mi', 'Gi', 'Ti', 'Pi', 'Ei', 'Zi']:
         if abs(num) < 1024.0:
             return "%3.1f %s%s" % (num, unit, suffix)
         num /= 1024.0
@@ -348,22 +375,26 @@ def humanize_sizeof(num, suffix='B'):
 ### Yunhost functions ###
 ###
 
-def part_list_all(auth = None):
+
+def part_list_all(auth=None):
     try:
         context = pyudev.Context()
-        devices = [device.device_node for device in context.list_devices(DEVTYPE='disk') if device['MAJOR'] == '8' or device['MAJOR'] == '3']
+        devices = [device.device_node for device in context.list_devices(
+            DEVTYPE='disk') if device['MAJOR'] == '8' or device['MAJOR'] == '3']
         return {'devices': [part_list(dev, auth) for dev in devices]}
     except Exception as e:
         raise MoulinetteError(errno.EIO, e.message)
 
-def part_list(devpath = None, auth = None):
+
+def part_list(devpath=None, auth=None):
     try:
         fdisk = Fdisk(devpath=devpath)
         return fdisk.print_partitions()
     except Exception as e:
         raise MoulinetteError(errno.EIO, e.message)
 
-def part_toggle_boot(devpath, index, auth = None):
+
+def part_toggle_boot(devpath, index, auth=None):
     try:
         fdisk = Fdisk(devpath=devpath)
         ret = fdisk.toggle_bootable(int(index))
@@ -372,7 +403,8 @@ def part_toggle_boot(devpath, index, auth = None):
     except Exception as e:
         raise MoulinetteError(errno.EIO, e.message)
 
-def part_toggle_raid(devpath, index, auth = None):
+
+def part_toggle_raid(devpath, index, auth=None):
     try:
         fdisk = Fdisk(devpath=devpath)
         ret = fdisk.toggle_raid(int(index))
@@ -381,16 +413,18 @@ def part_toggle_raid(devpath, index, auth = None):
     except Exception as e:
         raise MoulinetteError(errno.EIO, e.message)
 
-def part_create(devpath, type, start, size, auth = None):
+
+def part_create(devpath, type, start, size, format_type, auth=None):
     try:
         fdisk = Fdisk(devpath=devpath)
-        ret = fdisk.add_partition(type, start, size)
+        ret = fdisk.add_partition(type, start, size, format_type)
         fdisk.write()
         return ret
     except Exception as e:
         raise MoulinetteError(errno.EIO, e.message)
 
-def part_delete(devpath, index, auth = None):
+
+def part_delete(devpath, index, auth=None):
     try:
         fdisk = Fdisk(devpath=devpath)
         ret = fdisk.delete_partition(index)
@@ -399,16 +433,18 @@ def part_delete(devpath, index, auth = None):
     except Exception as e:
         raise MoulinetteError(errno.EIO, e.message)
 
-def part_type(devpath, index, type, auth = None):
+
+def part_format(devpath, type, index, auth=None):
     try:
         fdisk = Fdisk(devpath=devpath)
-        ret = fdisk.change_type(index, type)
+        ret = fdisk.format_partition(int(index), type)
         fdisk.write()
         return ret
     except Exception as e:
         raise MoulinetteError(errno.EIO, e.message)
 
-def part_fresh_disk(devpath, auth = None):
+
+def part_fresh_disk(devpath, auth=None):
     try:
         fdisk = Fdisk(devpath=devpath)
         ret = fdisk.create_empty()
@@ -416,5 +452,3 @@ def part_fresh_disk(devpath, auth = None):
         return ret
     except Exception as e:
         raise MoulinetteError(errno.EIO, e.message)
-
-
