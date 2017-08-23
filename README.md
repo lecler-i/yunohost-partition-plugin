@@ -6,15 +6,17 @@ A plugin to manage disks in Yunhost
 - [Installation](#installation)
 - [Usage](#usage)
 - [Support](#support)
-- [Contributing](#contributing)
 
 ## Installation
 
-#### With .deb package
+#### Automatic .deb install
 
 Download the latest `yunohost-partition-plugin_x.x.x.deb` on the [Github Release Page](https://github.com/lecler-i/yunohost-partition-plugin/releases/latest)
+
 Open a terminal and go into the directory of the download.
+
 Install the package with the command `dpkg -i FILEYOUJUSTDOWNLOAD.deb`
+
 If the installation fail because of missing dependencies, install them
 with `apt-get install -f`
 
@@ -45,10 +47,11 @@ cp -r src/ynh_part /usr/lib/moulinette/
 
 #### Create a new partition
 
-primary (p) NTFS partition at sector 2097152 of a 1Gb size
+>primary (p) NTFS partition at sector 2097152 of a 1Gb size
+
 `yunohost part create /dev/sdb 2097152 p ntfs +1G`
 
 ## Support
 
-Please [open an issue](()(https://github.com/lecler-i/yunohost-partition-plugin/issues) for support.
+Please [open an issue](https://github.com/lecler-i/yunohost-partition-plugin/issues) for support.
 
