@@ -3,7 +3,6 @@ import pexpect
 import errno
 
 from moulinette.core import MoulinetteError
-from moulinette.utils.log import getActionLogger
 
 class Mdadm(object):
     def __init__(self):
@@ -22,7 +21,7 @@ class Mdadm(object):
         args += ['-l', level, '-n', str(len(devices_list))]
         args += devices_list
         self.child = pexpect.spawn('mdadm', args)
-        self.child.logfile = sys.stdout
+        #self.child.logfile = sys.stdout
 
         try:
             errors = self._parse_errors([])
