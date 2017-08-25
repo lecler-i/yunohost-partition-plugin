@@ -94,8 +94,6 @@ class Fdisk(object):
                 self.disk.deletePartition(p)
                 self.write()
                 return self.add_partition(p.type, geometry.start, "+{}".format(geometry.length), type)
-                #self.disk.addPartition(partition=partition, constraint=self.device.getConstraint())
-                return True
 
         raise RuntimeError("No partition with index % found".format(index))
         return False
@@ -104,7 +102,7 @@ class Fdisk(object):
         """delete a partition"""
         if not self.disk.partitions:
             raise RuntimeError('No partition is defined yet!')
-        number = int(index)  # self._ask_partition()
+        number = index  # self._ask_partition()
         for p in self.disk.partitions:
             if p.number == number:
                 self.disk.deletePartition(p)
@@ -149,12 +147,9 @@ primary partition with an extended partition first.""")
                     default = 'e'
                 options.add('e')
         if ext_count:
-            # XXX: We do not observe disk.getMaxLogicalPartitions() constraint
             default = default or 'l'
             options.add('l')
 
-        # fdisk doesn't display a menu if it has only one option, but we do
-        # raw_input('Select (default {default:s}): '.format(default=default))
         choice = type
         if not choice:
             choice = default
@@ -163,43 +158,38 @@ primary partition with an extended partition first.""")
             raise RuntimeError(
                 "Invalid partition type `{choice}'".format(choice=choice))
 
-        try:
-            partition = None
-            ext_part = self.disk.getExtendedPartition()
-            if choice[0] == 'p':
-                # If there is an extended partition, we look for free region that is
-                # completely outside of it.
-                if ext_part:
-                    try:
-                        ext_part.geometry.intersect(geometry)
-                        print 'No free sectors available'
-                        return
-                    except ArithmeticError:
-                        # All ok
-                        pass
-
-                p = self._create_partition(
-                    geometry, part_start, part_end, format_type, type=parted.PARTITION_NORMAL)
-            elif choice[0] == 'e':
-                # Create extended partition in the largest free region
-                p = self._create_partition(
-                    geometry, part_start, part_end, format_type, type=parted.PARTITION_EXTENDED)
-            elif choice[0] == 'l':
-                # Largest free region must be (at least partially) inside the
-                # extended partition.
+        partition = None
+        ext_part = self.disk.getExtendedPartition()
+        if choice[0] == 'p':
+            # If there is an extended partition, we look for free region that is
+            # completely outside of it.
+            if ext_part:
                 try:
-                    geometry = ext_part.geometry.intersect(geometry)
+                    ext_part.geometry.intersect(geometry)
+                    raise RuntimeError('No free sectors available')
                 except ArithmeticError:
-                    print "No free sectors available"
-                    return
+                    pass
 
-                p = self._create_partition(
-                    geometry, part_start, part_end, format_type, type=parted.PARTITION_LOGICAL)
+            p = self._create_partition(
+                geometry, part_start, part_end, format_type, type=parted.PARTITION_NORMAL)
+        elif choice[0] == 'e':
+            # Create extended partition in the largest free region
+            p = self._create_partition(
+                geometry, part_start, part_end, format_type, type=parted.PARTITION_EXTENDED)
+        elif choice[0] == 'l':
+            # Largest free region must be (at least partially) inside the
+            # extended partition.
+            try:
+                geometry = ext_part.geometry.intersect(geometry)
+            except ArithmeticError:
+                print "No free sectors available"
+                return
 
-            if p:
-                return self._format_partition(p)
-        except RuntimeError as e:
-            print e.message
+            p = self._create_partition(
+                geometry, part_start, part_end, format_type, type=parted.PARTITION_LOGICAL)
+
+        if p:
+            return self._format_partition(p)
 
     def create_empty(self):
         """create a new empty DOS partition table"""
@@ -235,19 +225,17 @@ primary partition with an extended partition first.""")
 
     def write(self):
         """write table to disk and exit"""
-        self.disk.commit()
+        return self.disk.commit()
 
     def _parse_last_sector_expr(self, start, value, sector_size):
         """Parses fdisk(1)-style partition end exception"""
         import re
 
-        # map fdisk units to PyParted ones
         known_units = {'K': 'KiB', 'M': 'MiB', 'G': 'GiB',
                        'KB': 'kB', 'MB': 'MB', 'GB': 'GB'}
 
         match = re.search('^\+(?P<num>\d+)(?P<unit>[KMG]?)$', value)
         if match:
-            # num must be an integer; if not, raise ValueError
             num = int(match.group('num'))
             unit = match.group('unit')
             if not unit:
@@ -260,7 +248,6 @@ primary partition with an extended partition first.""")
                     parted.sizeToSectors(num, known_units[unit], sector_size)
                 return sector
         else:
-            # must be an integer (sector); if not, raise ValueError
             sector = int(value)
             return sector
 
@@ -268,21 +255,12 @@ primary partition with an extended partition first.""")
         """Creates the partition with geometry specified"""
         # libparted doesn't let setting partition number, so we skip it, too
 
-        # We want our new partition to be optimally aligned
-        # (you can use minimalAlignedConstraint, if you wish).
         alignment = self.device.optimalAlignedConstraint
-        constraint = self.device.getConstraint().intersect(alignment)  # parted.Constraint(maxGeom=region).intersect(alignment)
-        data = {
-            'start': constraint.startAlign.alignUp(region, region.start),
-            'end': constraint.endAlign.alignDown(region, region.end),
-        }
+        constraint = parted.Constraint(maxGeom=region).intersect(alignment)
 
         part_start = int(start)
-        # check sur data['start']
-
         part_end = self._parse_last_sector_expr(
-            part_start, end, self.device.sectorSize)  # self._ask_value(
-        # check sur data['end']
+            part_start, end, self.device.sectorSize)
 
         try:
             geometry = parted.Geometry(
@@ -295,11 +273,9 @@ primary partition with an extended partition first.""")
                 geometry=geometry,
                 fs=fs
             )
-            self.disk.addPartition(partition=partition, constraint=constraint)
+            self.disk.addPartition(partition=partition,
+                                   constraint=constraint)
         except (parted.PartitionException, parted.GeometryException, parted.CreateException) as e:
-            # GeometryException accounts for incorrect start/end values (e.g. start < end),
-            # CreateException is raised e.g. when the partition doesn't fit on the disk.
-            # PartedException is a generic error (e.g. start/end values out of range)
             raise RuntimeError(e.message)
 
         return partition
@@ -360,7 +336,7 @@ primary partition with an extended partition first.""")
             'system': self._guess_system(p),
             'system_type': p.fileSystem.type if p.fileSystem else None,
             'size': humanize_sizeof(p.geometry.length * self.device.sectorSize),
-            #'system_raw': p.fileSystem
+            'system_raw': p.fileSystem
         }
 
 
@@ -376,20 +352,23 @@ def humanize_sizeof(num, suffix='B'):
 ###
 
 
-def part_list_all(auth=None):
+def part_list_disks(auth=None):
     try:
         context = pyudev.Context()
         devices = [device.device_node for device in context.list_devices(
             DEVTYPE='disk') if device['MAJOR'] == '8' or device['MAJOR'] == '3']
-        return {'devices': [part_list(dev, auth) for dev in devices]}
+        return {'disks': devices}
     except Exception as e:
         raise MoulinetteError(errno.EIO, e.message)
 
 
 def part_list(devpath=None, auth=None):
     try:
-        fdisk = Fdisk(devpath=devpath)
-        return fdisk.print_partitions()
+        if not devpath:
+            return {'disks': [part_list(device, auth) for device in part_list_disks(auth)['disks']]}
+        else:
+            fdisk = Fdisk(devpath=devpath)
+            return fdisk.print_partitions()
     except Exception as e:
         raise MoulinetteError(errno.EIO, e.message)
 
@@ -427,19 +406,16 @@ def part_create(devpath, type, start, size, format_type, auth=None):
 def part_delete(devpath, index, auth=None):
     try:
         fdisk = Fdisk(devpath=devpath)
-        ret = fdisk.delete_partition(index)
+        ret = fdisk.delete_partition(int(index))
         fdisk.write()
         return ret
     except Exception as e:
         raise MoulinetteError(errno.EIO, e.message)
 
 
-def part_format(devpath, type, index, auth=None):
+def part_mkfs(partpath, type, auth=None):
     try:
-        fdisk = Fdisk(devpath=devpath)
-        ret = fdisk.format_partition(int(index), type)
-        fdisk.write()
-        return ret
+        subprocess.call(['mkfs', '-t', type, partpath])
     except Exception as e:
         raise MoulinetteError(errno.EIO, e.message)
 
