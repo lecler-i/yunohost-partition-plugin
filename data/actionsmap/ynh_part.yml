@@ -144,7 +144,7 @@ part_raid:
                 level:
                     help: Level of the raid system ( https://fr.wikipedia.org/wiki/RAID_(informatique) )
                 devices:
-                    help: List of devices
+                    help: List of disks to be integrated into RAID.
                     nargs: "*"
                 --force:
                     help: Confirm raid creation
